@@ -1,0 +1,39 @@
+@startuml
+participant main order 10
+participant 按键模块 order 20
+
+participant 温湿度传感器模块 order 40
+participant pm2.5传感器模块 order 50
+participant 甲醛传感器模块 order 50
+participant 报警模块 order 60
+participant 异步日志模块 order 70
+
+
+
+main -> 按键模块:key_init()
+按键模块->按键模块:rt_pin_mode()
+按键模块->按键模块:rt_pin_attach_irq(key1_cb/key2_cb)
+按键模块->按键模块:pt_pin_irq_enable()
+
+main -> 报警模块:led_init()
+报警模块->报警模块:rt_pin_mode()
+报警模块->报警模块:rt_pin_write()默认灭
+报警模块->报警模块:rt_thread_create("led",led_entry,,)
+报警模块->报警模块:rt_thread_startup()
+
+main -> 温湿度传感器模块:temp_humi_init()
+温湿度传感器模块-> 温湿度传感器模块:aht10_hw_init();驱动,初始化
+温湿度传感器模块-> 温湿度传感器模块:rt_thread_create("temp_humi_th",temp_humi_entry,,,)、 
+温湿度传感器模块-> 温湿度传感器模块:rt_thread_startup()
+
+
+main -> pm2.5传感器模块:pm25_init()
+pm2.5传感器模块-> pm2.5传感器模块:gp2y_hw_init()驱动,初始化
+pm2.5传感器模块-> pm2.5传感器模块:rt_thread_create("pm25_th",pm25_entry,,,)
+pm2.5传感器模块-> pm2.5传感器模块:rt_thread_startup()
+
+main -> 异步日志模块:mylog_init()
+异步日志模块-> 异步日志模块:rt_mb_create()
+异步日志模块-> 异步日志模块:rt_thread_create("mylog",mylog_entry,,,)
+异步日志模块-> 异步日志模块:rt_thread_startup()
+@enduml

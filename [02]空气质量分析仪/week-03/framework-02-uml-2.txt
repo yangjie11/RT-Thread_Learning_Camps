@@ -1,0 +1,62 @@
+@startuml
+participant main order 10
+participant 按键模块 order 20
+
+participant 温湿度传感器模块 order 40
+participant pm2.5传感器模块 order 50
+participant 甲醛传感器模块 order 50
+participant 报警模块 order 60
+participant 异步日志模块 order 70
+
+group temp_humi_entry()温湿度线程入口函数
+温湿度传感器模块-> 温湿度传感器模块:如果标志为TEMP_HUMI_ON
+
+温湿度传感器模块-> 温湿度传感器模块:pm25_read()读取数据,每秒一次
+温湿度传感器模块-> 报警模块:----如果数值正常，led_blink_note(TEMP_HUMI_ON),使对应led闪烁
+报警模块-> 报警模块:rt_event_send(&event, EVENT_FLAG1);
+温湿度传感器模块-> 报警模块:----如果数值超范围,报警,led_on(),使对应led亮
+
+温湿度传感器模块-> 异步日志模块:调用my_log()打印
+异步日志模块-> 异步日志模块:rt_mb_send()
+温湿度传感器模块-> 温湿度传感器模块:如果标志为TEMP_HUMI_OFF
+温湿度传感器模块-> 报警模块:执行led_off(),使对应led灭
+end
+
+group pm25_entry()即pm2.5线程的入口函数
+pm2.5传感器模块-> pm2.5传感器模块:如果标志为PM25_ON
+
+pm2.5传感器模块-> pm2.5传感器模块:temp_humi_read()读取数据,每秒一次
+pm2.5传感器模块-> 报警模块:----如果数值正常，led_blink_note(PM25_ON),使对应led闪烁
+报警模块-> 报警模块:rt_event_send(&event, EVENT_FLAG2);
+pm2.5传感器模块-> 报警模块:----如果数值超范围,报警,led_on()，使对应led亮
+
+pm2.5传感器模块-> 异步日志模块:调用my_log()打印
+异步日志模块-> 异步日志模块:rt_mb_send()
+pm2.5传感器模块-> pm2.5传感器模块:如果标志为PM25_OFF
+pm2.5传感器模块-> 报警模块:执行led_off()，使对应led灭
+end
+
+group  key1_cb()按键1中断回调
+按键模块-> 温湿度传感器模块:按键1按下一次，temp_humi_on()
+温湿度传感器模块-> 温湿度传感器模块:TEMP_HUMI_ON
+按键模块-> 温湿度传感器模块:按键1再按下一次，temp_humi_off()
+温湿度传感器模块-> 温湿度传感器模块:TEMP_HUMI_OFF
+end
+
+group key2_cb()按键2中断回调
+按键模块-> pm2.5传感器模块:按键1按下一次,pm25_on()
+pm2.5传感器模块-> pm2.5传感器模块:PM25_ON
+按键模块-> pm2.5传感器模块:按键1再按下一次，pm25_off()
+pm2.5传感器模块-> pm2.5传感器模块:PM25_OFF
+end
+group led_entry()即led线程的入口函数
+报警模块-> 报警模块:rt_event_recv(EVENT_FLAG1 | EVENT_FLAG2 |EVENT_FLAG3 )接收3个数据线程发来的"数值正常"事件
+报警模块-> 报警模块:根据接收到的标志不同,调用led_blink(EVENT_FLAG1)入参不同，不同led闪烁
+报警模块-> 报警模块:清除事件集标志，rt_event_control(&event, RT_IPC_CMD_RESET, 0);
+end
+
+group mylog_entry()异步日志线程
+异步日志模块-> 异步日志模块:rt_mb_recv()
+异步日志模块-> 异步日志模块:rt_kprintf()
+end
+@enduml
